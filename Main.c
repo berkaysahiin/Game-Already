@@ -1,12 +1,16 @@
 #include <stdio.h>
 
 #pragma warning(push, 3)
+
 #include <windows.h>
+
 #pragma warning(pop)
 
 #include "Header.h"
 
+HANDLE gGameWindow;
 
+BOOL gGameIsRunning;
 
 
 int WINAPI WinMain(HINSTANCE Instance, HINSTANCE PreviousInstance, LPSTR CommandLine, int CmdShow)
@@ -29,14 +33,23 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE PreviousInstance, LPSTR Command
 
     MSG Message = { 0 };
 
-    
+    gGameIsRunning = TRUE;
 
-    while (GetMessageA(&Message, NULL, 0, 0) > 0)
+    while (gGameIsRunning == TRUE)
     {
-        TranslateMessage(&Message);
-        
-        DispatchMessageA(&Message);
+        while (PeekMessageA(&Message, gGameWindow, 0 , 0, PM_REMOVE))
+        {
+            DispatchMessage(&Message);
+        }
+
+        ProcessPlayerInput();
+
+        Sleep(1);
+
+        // graphics renderer
     }
+
+   
 
  Exit:
 	return (0);
@@ -50,7 +63,10 @@ LRESULT CALLBACK MainWindowProc(_In_ HWND WindowHandle, _In_ UINT Message, _In_ 
     {
         case WM_CLOSE:
         {
+            gGameIsRunning = FALSE;
+
             PostQuitMessage(0);
+
             break;
         }
 
@@ -67,8 +83,6 @@ DWORD CreateMainGameWindow(void)
     DWORD Result = ERROR_SUCCESS;
 
     WNDCLASSEXA WindowClass = { 0 };
-
-    HWND WindowHandle = 0;
 
     WindowClass.cbSize = sizeof(WNDCLASSEX);
 
@@ -104,9 +118,9 @@ DWORD CreateMainGameWindow(void)
         goto Exit;
     }
 
-    WindowHandle = CreateWindowExA(WS_EX_CLIENTEDGE, WindowClass.lpszClassName, "Windows", WS_OVERLAPPEDWINDOW | WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT, 240, 120, NULL, NULL, GetModuleHandle(NULL), NULL);
+    gGameWindow = CreateWindowExA(WS_EX_CLIENTEDGE, WindowClass.lpszClassName, "Windows", WS_OVERLAPPEDWINDOW | WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT, 240, 120, NULL, NULL, GetModuleHandle(NULL), NULL);
 
-    if (WindowHandle == NULL)
+    if (gGameWindow == NULL)
     {
         Result = GetLastError();
 
@@ -132,5 +146,15 @@ BOOL GameIsAlreadyRunning(void)
     else
     {
         return(FALSE);
+    }
+}
+
+void ProcessPlayerInput(void)
+{
+    short EscapeKeyIsDown = GetAsyncKeyState(VK_ESCAPE);
+
+    if (EscapeKeyIsDown)
+    {
+        SendMessageA(gGameWindow, WM_CLOSE, 0, 0);
     }
 }
