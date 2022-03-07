@@ -1,2 +1,2 @@
 # Game-Already
-A game is developed in C without any library from scratch
+A game developed in C without any library from scratch
