@@ -8,16 +8,22 @@
 
 #include "Header.h"
 
-HANDLE gGameWindow;
+HWND gGameWindow;
 
 BOOL gGameIsRunning;
 
+GAMEBITMAP gDrawingSurface;
 
-int WINAPI WinMain(HINSTANCE Instance, HINSTANCE PreviousInstance, LPSTR CommandLine, int CmdShow)
+
+int WINAPI WinMain (HINSTANCE Instance, HINSTANCE PreviousInstance, LPSTR CommandLine, int CmdShow)
 {
 	UNREFERENCED_PARAMETER(PreviousInstance);
+
 	UNREFERENCED_PARAMETER(CommandLine);
-	UNREFERENCED_PARAMETER(CmdShow);
+
+    UNREFERENCED_PARAMETER(CmdShow);
+
+    UNREFERENCED_PARAMETER(Instance);
 
     if (GameIsAlreadyRunning() == TRUE)
     {
@@ -28,6 +34,27 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE PreviousInstance, LPSTR Command
 
     if (CreateMainGameWindow() != ERROR_SUCCESS)
     {
+        goto Exit;
+    }
+
+    gDrawingSurface.bitMapInfo.bmiHeader.biSize = sizeof(gDrawingSurface.bitMapInfo.bmiHeader);
+
+    gDrawingSurface.bitMapInfo.bmiHeader.biWidth = GAME_RES_WIDTH;
+
+    gDrawingSurface.bitMapInfo.bmiHeader.biHeight = GAME_RES_HEIGHT;
+
+    gDrawingSurface.bitMapInfo.bmiHeader.biBitCount = GAME_BPP;
+
+    gDrawingSurface.bitMapInfo.bmiHeader.biCompression = BI_RGB;
+
+    gDrawingSurface.bitMapInfo.bmiHeader.biPlanes = 1;
+
+    gDrawingSurface.memory = VirtualAlloc(NULL, GAME_DRAWING_AREA_MEMORY_SIZE, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+
+    if (gDrawingSurface.memory == NULL)
+    {
+        MessageBoxA(NULL, "Failed to allocate memory for drawing surface", "Error!", MB_ICONEXCLAMATION | MB_OK);
+
         goto Exit;
     }
 
@@ -44,12 +71,12 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE PreviousInstance, LPSTR Command
 
         ProcessPlayerInput();
 
+        RenderFrameGraphics();
+
         Sleep(1);
 
-        // graphics renderer
+        
     }
-
-   
 
  Exit:
 	return (0);
@@ -157,4 +184,9 @@ void ProcessPlayerInput(void)
     {
         SendMessageA(gGameWindow, WM_CLOSE, 0, 0);
     }
+}
+
+void RenderFrameGraphics(void)
+{
+    // logic
 }
