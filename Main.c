@@ -18,6 +18,10 @@ GAMEBITMAP gBackBuffer;
 
 MONITORINFO gMonitorInfo = { sizeof(MONITORINFO) } ;
 
+int32_t gMonitorWidth;
+
+int32_t gMonitorHeight;
+
 
 int WINAPI WinMain (HINSTANCE Instance, HINSTANCE PreviousInstance, LPSTR CommandLine, int CmdShow)
 {
@@ -169,9 +173,23 @@ DWORD CreateMainGameWindow(void)
         goto Exit;
     }
 
-    int MonitorWidth = gMonitorInfo.rcMonitor.right - gMonitorInfo.rcMonitor.left;
+    gMonitorWidth = gMonitorInfo.rcMonitor.right - gMonitorInfo.rcMonitor.left;
 
-    int MonitorHeight = gMonitorInfo.rcMonitor.top - gMonitorInfo.rcMonitor.bottom;
+    gMonitorHeight = - gMonitorInfo.rcMonitor.top + gMonitorInfo.rcMonitor.bottom;
+
+    if (SetWindowLongPtrA(gGameWindow, GWL_STYLE, (WS_OVERLAPPEDWINDOW | WS_VISIBLE) & ~WS_OVERLAPPEDWINDOW) == 0)
+    {
+        Result = GetLastError();
+
+        goto Exit;
+    }
+
+    if (SetWindowPos(gGameWindow, HWND_TOP, gMonitorInfo.rcMonitor.left, gMonitorInfo.rcMonitor.top, gMonitorWidth, gMonitorHeight, SWP_FRAMECHANGED) == 0)
+    {
+        Result = GetLastError();
+
+        goto Exit;
+    }
 
  Exit:
     return(Result);
@@ -195,7 +213,7 @@ BOOL GameIsAlreadyRunning(void)
 
 void ProcessPlayerInput(void)
 {
-    short EscapeKeyIsDown = GetAsyncKeyState(VK_ESCAPE);
+    int16_t EscapeKeyIsDown = GetAsyncKeyState(VK_ESCAPE);
 
     if (EscapeKeyIsDown)
     {
@@ -207,7 +225,19 @@ void RenderFrameGraphics(void)
 {
     HDC DeviceContext = GetDC(gGameWindow);
 
-    StretchDIBits(DeviceContext, 0, 0, 100, 100, 0, 0, 100, 100, gBackBuffer.memory, &gBackBuffer.bitMapInfo, DIB_RGB_COLORS, SRCCOPY);
+    StretchDIBits(DeviceContext,
+        0,
+        0,
+        gMonitorWidth, 
+        gMonitorWidth,
+        0,
+        0,
+        GAME_RES_WIDTH, 
+        GAME_RES_HEIGHT,
+        gBackBuffer.memory, 
+        &gBackBuffer.bitMapInfo, 
+        DIB_RGB_COLORS,
+        SRCCOPY);
 
     ReleaseDC(gGameWindow, DeviceContext);
 }
