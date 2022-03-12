@@ -41,6 +41,9 @@ int WINAPI WinMain (HINSTANCE Instance, HINSTANCE PreviousInstance, LPSTR Comman
         goto Exit;
     }
 
+    QueryPerformanceFrequency(&gPerformanceData.PerfFrequency);
+
+
     gBackBuffer.bitMapInfo.bmiHeader.biSize = sizeof(gBackBuffer.bitMapInfo.bmiHeader);
 
     gBackBuffer.bitMapInfo.bmiHeader.biWidth = GAME_RES_WIDTH;
@@ -68,6 +71,8 @@ int WINAPI WinMain (HINSTANCE Instance, HINSTANCE PreviousInstance, LPSTR Comman
 
     while (gGameIsRunning == TRUE)
     {
+        QueryPerformanceCounter(&gPerformanceData.FrameStart);
+
         while (PeekMessageA(&Message, gGameWindow, 0 , 0, PM_REMOVE))
         {
             DispatchMessage(&Message);
@@ -77,9 +82,27 @@ int WINAPI WinMain (HINSTANCE Instance, HINSTANCE PreviousInstance, LPSTR Comman
 
         RenderFrameGraphics();
 
+        QueryPerformanceCounter(&gPerformanceData.FrameEnd);
+
+        gPerformanceData.ElapsedMicrosecondsPerFrame.QuadPart = gPerformanceData.FrameEnd.QuadPart - gPerformanceData.FrameStart.QuadPart;
+
+        gPerformanceData.ElapsedMicrosecondsPerFrame.QuadPart *= 1000000;
+
+        gPerformanceData.ElapsedMicrosecondsPerFrame.QuadPart /= gPerformanceData.PerfFrequency.QuadPart;
+
         Sleep(1);
 
+
         gPerformanceData.TotalFramesRendered++;
+
+        if (gPerformanceData.TotalFramesRendered % CALCULATE_AVG_FPS_EVERY_X_FRAMES == 0)
+        {
+            char str[64] = { 0 };
+
+            _snprintf_s(str, _countof(str), _TRUNCATE,"Elapsed microseconds : %lli\n", gPerformanceData.ElapsedMicrosecondsPerFrame.QuadPart);
+
+            OutputDebugStringA(str);
+        }
 
     }
 
@@ -238,13 +261,6 @@ void RenderFrameGraphics(void)
     {
         memcpy_s((PIXEL32*)gBackBuffer.memory + x, sizeof(PIXEL32) ,&pixel, sizeof(PIXEL32));
     }
-
-
-
-
-
-
-
 
 
     StretchDIBits(DeviceContext,
