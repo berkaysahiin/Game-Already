@@ -19,21 +19,34 @@ GAMEBITMAP gBackBuffer;
 GAMEPERFDATA gPerformanceData;
 
 
-int WINAPI WinMain (HINSTANCE Instance, HINSTANCE PreviousInstance, LPSTR CommandLine, int CmdShow)
+int __stdcall WinMain(HINSTANCE Instance, HINSTANCE PreviousInstance, PSTR CommandLine, INT CmdShow)
 {
-	UNREFERENCED_PARAMETER(PreviousInstance);
+    UNREFERENCED_PARAMETER(Instance);
 
-	UNREFERENCED_PARAMETER(CommandLine);
+    UNREFERENCED_PARAMETER(PreviousInstance);
+
+    UNREFERENCED_PARAMETER(CommandLine);
 
     UNREFERENCED_PARAMETER(CmdShow);
 
-    UNREFERENCED_PARAMETER(Instance);
+    MSG Message = { 0 };
+
+    int64_t FrameStart = 0;
+
+    int64_t FrameEnd = 0;
+
+    int64_t ElapsedMicrosecondsPerFrame;
+
+    int64_t ElapsedMicrosecondsPerFrameAccumulatorRaw = 0;
+
+    int64_t ElapsedMicrosecondsPerFrameAccumulatorCooked = 0;
+
 
     if (GameIsAlreadyRunning() == TRUE)
     {
-        MessageBoxA(NULL, "Another instance of this program is already running", "Error!", MB_ICONEXCLAMATION | MB_OK);
-        goto Exit;
+        MessageBoxA(NULL, "Another instance of this program is already running!", "Error!", MB_ICONEXCLAMATION | MB_OK);
 
+        goto Exit;
     }
 
     if (CreateMainGameWindow() != ERROR_SUCCESS)
@@ -41,73 +54,112 @@ int WINAPI WinMain (HINSTANCE Instance, HINSTANCE PreviousInstance, LPSTR Comman
         goto Exit;
     }
 
-    QueryPerformanceFrequency(&gPerformanceData.PerfFrequency);
+
+    QueryPerformanceFrequency((LARGE_INTEGER*)&gPerformanceData.PerfFrequency);
 
 
-    gBackBuffer.bitMapInfo.bmiHeader.biSize = sizeof(gBackBuffer.bitMapInfo.bmiHeader);
 
-    gBackBuffer.bitMapInfo.bmiHeader.biWidth = GAME_RES_WIDTH;
+    gBackBuffer.BitmapInfo.bmiHeader.biSize = sizeof(gBackBuffer.BitmapInfo.bmiHeader);
 
-    gBackBuffer.bitMapInfo.bmiHeader.biHeight = GAME_RES_HEIGHT;
+    gBackBuffer.BitmapInfo.bmiHeader.biWidth = GAME_RES_WIDTH;
 
-    gBackBuffer.bitMapInfo.bmiHeader.biBitCount = GAME_BPP;
+    gBackBuffer.BitmapInfo.bmiHeader.biHeight = GAME_RES_HEIGHT;
 
-    gBackBuffer.bitMapInfo.bmiHeader.biCompression = BI_RGB;
+    gBackBuffer.BitmapInfo.bmiHeader.biBitCount = GAME_BPP;
 
-    gBackBuffer.bitMapInfo.bmiHeader.biPlanes = 1;
+    gBackBuffer.BitmapInfo.bmiHeader.biCompression = BI_RGB;
 
-    gBackBuffer.memory = VirtualAlloc(NULL, GAME_DRAWING_AREA_MEMORY_SIZE, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+    gBackBuffer.BitmapInfo.bmiHeader.biPlanes = 1;
 
-    if (gBackBuffer.memory == NULL)
+    gBackBuffer.Memory = VirtualAlloc(NULL, GAME_DRAWING_AREA_MEMORY_SIZE, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+
+    if (gBackBuffer.Memory == NULL)
     {
-        MessageBoxA(NULL, "Failed to allocate memory for drawing surface", "Error!", MB_ICONEXCLAMATION | MB_OK);
+        MessageBoxA(NULL, "Failed to allocate memory for drawing surface!", "Error!", MB_ICONEXCLAMATION | MB_OK);
 
         goto Exit;
     }
 
-    MSG Message = { 0 };
+    memset(gBackBuffer.Memory, 0x7F, GAME_DRAWING_AREA_MEMORY_SIZE);
+
+
 
     gGameIsRunning = TRUE;
 
     while (gGameIsRunning == TRUE)
     {
-        QueryPerformanceCounter(&gPerformanceData.FrameStart);
+        QueryPerformanceCounter((LARGE_INTEGER*)&FrameStart);
 
-        while (PeekMessageA(&Message, gGameWindow, 0 , 0, PM_REMOVE))
+        while (PeekMessageA(&Message, gGameWindow, 0, 0, PM_REMOVE))
         {
-            DispatchMessage(&Message);
+            DispatchMessageA(&Message);
         }
 
         ProcessPlayerInput();
 
         RenderFrameGraphics();
 
-        QueryPerformanceCounter(&gPerformanceData.FrameEnd);
+        QueryPerformanceCounter((LARGE_INTEGER*)&FrameEnd);
 
-        gPerformanceData.ElapsedMicrosecondsPerFrame.QuadPart = gPerformanceData.FrameEnd.QuadPart - gPerformanceData.FrameStart.QuadPart;
+        ElapsedMicrosecondsPerFrame = FrameEnd - FrameStart;
 
-        gPerformanceData.ElapsedMicrosecondsPerFrame.QuadPart *= 1000000;
+        ElapsedMicrosecondsPerFrame *= 1000000;
 
-        gPerformanceData.ElapsedMicrosecondsPerFrame.QuadPart /= gPerformanceData.PerfFrequency.QuadPart;
-
-        Sleep(1);
-
+        ElapsedMicrosecondsPerFrame /= gPerformanceData.PerfFrequency;
 
         gPerformanceData.TotalFramesRendered++;
 
-        if (gPerformanceData.TotalFramesRendered % CALCULATE_AVG_FPS_EVERY_X_FRAMES == 0)
+        ElapsedMicrosecondsPerFrameAccumulatorRaw += ElapsedMicrosecondsPerFrame;
+
+        while (ElapsedMicrosecondsPerFrame <= TARGET_MICROSECONDS_PER_FRAME)
         {
-            char str[64] = { 0 };
+            Sleep(0);
 
-            _snprintf_s(str, _countof(str), _TRUNCATE,"Elapsed microseconds : %lli\n", gPerformanceData.ElapsedMicrosecondsPerFrame.QuadPart);
+            ElapsedMicrosecondsPerFrame = FrameEnd - FrameStart;
 
-            OutputDebugStringA(str);
+            ElapsedMicrosecondsPerFrame *= 1000000;
+
+            ElapsedMicrosecondsPerFrame /= gPerformanceData.PerfFrequency;
+
+            QueryPerformanceCounter((LARGE_INTEGER*)&FrameEnd);
         }
 
+        ElapsedMicrosecondsPerFrameAccumulatorCooked += ElapsedMicrosecondsPerFrame;
+
+
+
+        if ((gPerformanceData.TotalFramesRendered % CALCULATE_AVG_FPS_EVERY_X_FRAMES) == 0)
+        {
+            int64_t AverageMicrosecondsPerFrameRaw = ElapsedMicrosecondsPerFrameAccumulatorRaw / CALCULATE_AVG_FPS_EVERY_X_FRAMES;
+
+            int64_t AverageMicrosecondsPerFrameCooked = ElapsedMicrosecondsPerFrameAccumulatorCooked / CALCULATE_AVG_FPS_EVERY_X_FRAMES;
+
+            gPerformanceData.RawFPSAverage = 1.0f / ((ElapsedMicrosecondsPerFrameAccumulatorRaw / 60) * 0.000001f);
+
+            gPerformanceData.CookedFPSAverage = 1.0f / ((ElapsedMicrosecondsPerFrameAccumulatorCooked / 60) * 0.000001f);
+
+
+            char str[256] = { 0 };
+
+            _snprintf_s(str, _countof(str), _TRUNCATE,
+                "Avg milliseconds/frame raw: %.02f\tAvg FPS Cooked: %.01f\tAvg FPS Raw: %.01f\n",
+                AverageMicrosecondsPerFrameRaw,
+                gPerformanceData.CookedFPSAverage,
+                gPerformanceData.RawFPSAverage);
+
+            OutputDebugStringA(str);
+
+            ElapsedMicrosecondsPerFrameAccumulatorRaw = 0;
+
+            ElapsedMicrosecondsPerFrameAccumulatorCooked = 0;
+        }
     }
 
- Exit:
-	return (0);
+
+Exit:
+
+
+    return(0);
 }
 
 LRESULT CALLBACK MainWindowProc(_In_ HWND WindowHandle, _In_ UINT Message, _In_ WPARAM WParam, _In_ LPARAM LParam)
@@ -116,20 +168,20 @@ LRESULT CALLBACK MainWindowProc(_In_ HWND WindowHandle, _In_ UINT Message, _In_ 
 
     switch (Message)
     {
-        case WM_CLOSE:
-        {
-            gGameIsRunning = FALSE;
+    case WM_CLOSE:
+    {
+        gGameIsRunning = FALSE;
 
-            PostQuitMessage(0);
+        PostQuitMessage(0);
 
-            break;
-        }
-
-        default:
-        {
-            Result = DefWindowProcA(WindowHandle, Message, WParam, LParam);
-        }
+        break;
     }
+    default:
+    {
+        Result = DefWindowProcA(WindowHandle, Message, WParam, LParam);
+    }
+    }
+
     return(Result);
 }
 
@@ -139,7 +191,7 @@ DWORD CreateMainGameWindow(void)
 
     WNDCLASSEXA WindowClass = { 0 };
 
-    WindowClass.cbSize = sizeof(WNDCLASSEX);
+    WindowClass.cbSize = sizeof(WNDCLASSEXA);
 
     WindowClass.style = 0;
 
@@ -149,7 +201,7 @@ DWORD CreateMainGameWindow(void)
 
     WindowClass.cbWndExtra = 0;
 
-    WindowClass.hInstance = GetModuleHandle(NULL);
+    WindowClass.hInstance = GetModuleHandleA(NULL);
 
     WindowClass.hIcon = LoadIconA(NULL, IDI_APPLICATION);
 
@@ -161,10 +213,11 @@ DWORD CreateMainGameWindow(void)
 
     WindowClass.lpszMenuName = NULL;
 
-    WindowClass.lpszClassName = "GAME_ALREADY_WÝNDOWCLASS";
+    WindowClass.lpszClassName = GAME_NAME "_WINDOWCLASS";
 
+    // SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
 
-    if (RegisterClassEx(&WindowClass) == 0)
+    if (RegisterClassExA(&WindowClass) == 0)
     {
         Result = GetLastError();
 
@@ -173,7 +226,7 @@ DWORD CreateMainGameWindow(void)
         goto Exit;
     }
 
-    gGameWindow = CreateWindowExA(0, WindowClass.lpszClassName, "Windows", WS_OVERLAPPEDWINDOW | WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT, 640, 480, NULL, NULL, GetModuleHandle(NULL), NULL);
+    gGameWindow = CreateWindowExA(0, WindowClass.lpszClassName, "Window Title", WS_OVERLAPPEDWINDOW | WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT, 640, 480, NULL, NULL, GetModuleHandleA(NULL), NULL);
 
     if (gGameWindow == NULL)
     {
@@ -190,14 +243,12 @@ DWORD CreateMainGameWindow(void)
     {
         Result = ERROR_MONITOR_NO_DESCRIPTOR;
 
-        MessageBox(NULL, "Could not acces to your monitor", "Error!", MB_ICONEXCLAMATION | MB_OK);
-
         goto Exit;
     }
 
     gPerformanceData.MonitorWidth = gPerformanceData.MonitorInfo.rcMonitor.right - gPerformanceData.MonitorInfo.rcMonitor.left;
 
-    gPerformanceData.MonitorHeight = - gPerformanceData.MonitorInfo.rcMonitor.top + gPerformanceData.MonitorInfo.rcMonitor.bottom;
+    gPerformanceData.MonitorHeight = gPerformanceData.MonitorInfo.rcMonitor.bottom - gPerformanceData.MonitorInfo.rcMonitor.top;
 
     if (SetWindowLongPtrA(gGameWindow, GWL_STYLE, (WS_OVERLAPPEDWINDOW | WS_VISIBLE) & ~WS_OVERLAPPEDWINDOW) == 0)
     {
@@ -206,14 +257,22 @@ DWORD CreateMainGameWindow(void)
         goto Exit;
     }
 
-    if (SetWindowPos(gGameWindow, HWND_TOP, gPerformanceData.MonitorInfo.rcMonitor.left, gPerformanceData.MonitorInfo.rcMonitor.top, gPerformanceData.MonitorWidth, gPerformanceData.MonitorHeight, SWP_FRAMECHANGED) == 0)
+    if (SetWindowPos(gGameWindow,
+        HWND_TOP,
+        gPerformanceData.MonitorInfo.rcMonitor.left,
+        gPerformanceData.MonitorInfo.rcMonitor.top,
+        gPerformanceData.MonitorWidth,
+        gPerformanceData.MonitorHeight,
+        SWP_NOOWNERZORDER | SWP_FRAMECHANGED) == 0)
     {
         Result = GetLastError();
 
         goto Exit;
     }
 
- Exit:
+
+Exit:
+
     return(Result);
 }
 
@@ -221,7 +280,7 @@ BOOL GameIsAlreadyRunning(void)
 {
     HANDLE Mutex = NULL;
 
-    Mutex = CreateMutexA(NULL, FALSE,  "GAME_ALREADY_MUTEX");
+    Mutex = CreateMutexA(NULL, FALSE, GAME_NAME "_GameMutex");
 
     if (GetLastError() == ERROR_ALREADY_EXISTS)
     {
@@ -245,35 +304,34 @@ void ProcessPlayerInput(void)
 
 void RenderFrameGraphics(void)
 {
-    HDC DeviceContext = GetDC(gGameWindow);
+    PIXEL32 Pixel = { 0 };
 
-    PIXEL32 pixel = { 0 };
+    Pixel.Blue = 0x7f;
 
-    pixel.Blue = 0xff;
+    Pixel.Green = 0;
 
-    pixel.Green = 0; 
+    Pixel.Red = 0;
 
-    pixel.Red = 0;
-
-    pixel.Alpha = 0xff;
+    Pixel.Alpha = 0xff;
 
     for (int x = 0; x < GAME_RES_WIDTH * GAME_RES_HEIGHT; x++)
     {
-        memcpy_s((PIXEL32*)gBackBuffer.memory + x, sizeof(PIXEL32) ,&pixel, sizeof(PIXEL32));
+        memcpy_s((PIXEL32*)gBackBuffer.Memory + x, sizeof(PIXEL32), &Pixel, sizeof(PIXEL32));
     }
 
+    HDC DeviceContext = GetDC(gGameWindow);
 
     StretchDIBits(DeviceContext,
         0,
         0,
         gPerformanceData.MonitorWidth,
-        gPerformanceData.MonitorWidth,
+        gPerformanceData.MonitorHeight,
         0,
         0,
-        GAME_RES_WIDTH, 
+        GAME_RES_WIDTH,
         GAME_RES_HEIGHT,
-        gBackBuffer.memory, 
-        &gBackBuffer.bitMapInfo, 
+        gBackBuffer.Memory,
+        &gBackBuffer.BitmapInfo,
         DIB_RGB_COLORS,
         SRCCOPY);
 
