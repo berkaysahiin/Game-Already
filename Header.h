@@ -1,6 +1,6 @@
 #pragma once
 
-#define GAME_NAME	"Game_B"
+#define GAME_NAME	"Game_ALREADY"
 
 #define GAME_RES_WIDTH	384
 
