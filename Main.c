@@ -321,11 +321,9 @@ void RenderFrameGraphics(void)
 
     HDC DeviceContext = GetDC(gGameWindow);
 
-    TextOutA(DeviceContext, 0, 0, "FPS RAW: ", (int)strlen("FPS RAW: "));
-
-    TextOutA(DeviceContext, 0, 24,gPerformanceData.raw);
-
-    StretchDIBits(DeviceContext,
+    StretchDIBits
+    (
+        DeviceContext,
         0,
         0,
         gPerformanceData.MonitorWidth,
@@ -337,7 +335,14 @@ void RenderFrameGraphics(void)
         gBackBuffer.Memory,
         &gBackBuffer.BitmapInfo,
         DIB_RGB_COLORS,
-        SRCCOPY);
+        SRCCOPY
+    );
+
+    char DebugTextBuffer[64] = { 0 };
+
+    sprintf_s(DebugTextBuffer, sizeof(DebugTextBuffer), "FPS Raw: %0.1f", gPerformanceData.RawFPSAverage);
+
+    TextOutA(DeviceContext, 0, 0, DebugTextBuffer, (int)strlen(DebugTextBuffer));
 
     ReleaseDC(gGameWindow, DeviceContext);
 }
