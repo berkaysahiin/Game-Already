@@ -113,7 +113,7 @@ int __stdcall WinMain(HINSTANCE Instance, HINSTANCE PreviousInstance, PSTR Comma
 
         while (ElapsedMicrosecondsPerFrame <= TARGET_MICROSECONDS_PER_FRAME)
         {
-            Sleep(0);
+            Sleep(1);
 
             ElapsedMicrosecondsPerFrame = FrameEnd - FrameStart;
 
@@ -139,15 +139,15 @@ int __stdcall WinMain(HINSTANCE Instance, HINSTANCE PreviousInstance, PSTR Comma
             gPerformanceData.CookedFPSAverage = 1.0f / ((ElapsedMicrosecondsPerFrameAccumulatorCooked / CALCULATE_AVG_FPS_EVERY_X_FRAMES) * 0.000001f);
 
 
-            char str[256] = { 0 };
+            char FrameStats[256] = { 0 };
 
-            _snprintf_s(str, _countof(str), _TRUNCATE,
+            _snprintf_s(FrameStats, _countof(FrameStats), _TRUNCATE,
                 "Avg microseconds/frame raw: %ull\tAvg FPS Cooked: %.01f\tAvg FPS Raw: %.01f\n",
                 AverageMicrosecondsPerFrameRaw,
                 gPerformanceData.CookedFPSAverage,
                 gPerformanceData.RawFPSAverage);
 
-            OutputDebugStringA(str);
+            OutputDebugStringA(FrameStats);
 
             ElapsedMicrosecondsPerFrameAccumulatorRaw = 0;
 
@@ -320,6 +320,10 @@ void RenderFrameGraphics(void)
     }
 
     HDC DeviceContext = GetDC(gGameWindow);
+
+    TextOutA(DeviceContext, 0, 0, "FPS RAW: ", (int)strlen("FPS RAW: "));
+
+    TextOutA(DeviceContext, 0, 24,gPerformanceData.raw);
 
     StretchDIBits(DeviceContext,
         0,
