@@ -11,3 +11,11 @@ Additional Resources:
 https://docs.microsoft.com
 
 http://windowstimestamp.com
+
+
+https://www.geeksforgeeks.org/static-variables-in-c/
+
+https://www.geeksforgeeks.org/what-are-static-functions-in-c/
+
+https://www.geeksforgeeks.org/memory-layout-of-c-program/
+
