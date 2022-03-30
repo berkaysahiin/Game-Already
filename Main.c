@@ -281,9 +281,16 @@ void ProcessPlayerInput(void)
 {
     int16_t EscapeKeyIsDown = GetAsyncKeyState(VK_ESCAPE);
 
+    int16_t DebugKeyIsDown = GetAsyncKeyState(VK_F1);
+
     if (EscapeKeyIsDown)
     {
         SendMessageA(gGameWindow, WM_CLOSE, 0, 0);
+    }
+
+    if (DebugKeyIsDown)
+    {
+        gPerformanceData.DisplayDebugInfo = !gPerformanceData.DisplayDebugInfo;
     }
 }
 
@@ -323,18 +330,20 @@ void RenderFrameGraphics(void)
         SRCCOPY
     );
 
-    SelectObject(DeviceContext, (HFONT)GetStockObject(ANSI_FIXED_FONT));
+    if (gPerformanceData.DisplayDebugInfo == TRUE)
+    {
+        SelectObject(DeviceContext, (HFONT)GetStockObject(ANSI_FIXED_FONT));
 
-    char DebugTextBuffer[64] = { 0 };
+        char DebugTextBuffer[64] = { 0 };
 
-    sprintf_s(DebugTextBuffer, sizeof(DebugTextBuffer), "FPS Raw:    %0.1f", gPerformanceData.RawFPSAverage);
+        sprintf_s(DebugTextBuffer, sizeof(DebugTextBuffer), "FPS Raw:    %0.1f", gPerformanceData.RawFPSAverage);
 
-    TextOutA(DeviceContext, 0, 0, DebugTextBuffer, (int)strlen(DebugTextBuffer));
+        TextOutA(DeviceContext, 0, 0, DebugTextBuffer, (int)strlen(DebugTextBuffer));
 
-    sprintf_s(DebugTextBuffer, sizeof(DebugTextBuffer), "FPS Cooked: %0.1f", gPerformanceData.CookedFPSAverage);
+        sprintf_s(DebugTextBuffer, sizeof(DebugTextBuffer), "FPS Cooked: %0.1f", gPerformanceData.CookedFPSAverage);
 
-    TextOutA(DeviceContext, 0, 12, DebugTextBuffer, (int)strlen(DebugTextBuffer));
-
-
+        TextOutA(DeviceContext, 0, 12, DebugTextBuffer, (int)strlen(DebugTextBuffer));
+    }
+    
     ReleaseDC(gGameWindow, DeviceContext);
 }
