@@ -283,15 +283,19 @@ void ProcessPlayerInput(void)
 
     int16_t DebugKeyIsDown = GetAsyncKeyState(VK_F1);
 
+    static int16_t DebugKeyWasDown;
+
     if (EscapeKeyIsDown)
     {
         SendMessageA(gGameWindow, WM_CLOSE, 0, 0);
     }
 
-    if (DebugKeyIsDown)
+    if (DebugKeyIsDown && !DebugKeyWasDown)
     {
         gPerformanceData.DisplayDebugInfo = !gPerformanceData.DisplayDebugInfo;
     }
+
+    DebugKeyWasDown = DebugKeyIsDown;
 }
 
 void RenderFrameGraphics(void)
