@@ -315,6 +315,19 @@ void RenderFrameGraphics(void)
         memcpy_s((PIXEL32*)gBackBuffer.Memory + x, sizeof(PIXEL32), &Pixel, sizeof(PIXEL32));
     }
 
+    int32_t ScreenX = 25;
+    int32_t ScreenY = 25;
+
+    int32_t StartingScreenPixel = ((GAME_RES_WIDTH * GAME_RES_HEIGHT) - GAME_RES_WIDTH) - (GAME_RES_WIDTH * ScreenY) + ScreenX;
+
+    for (int32_t y = 0; y < 16; y++)
+    {
+        for (int32_t x = 0; x < 16; x++)
+        {
+            memset((PIXEL32*)gBackBuffer.Memory + (uintptr_t)StartingScreenPixel + x - (GAME_RES_WIDTH * y), 0xFF, sizeof(PIXEL32));
+        }
+    }
+
     HDC DeviceContext = GetDC(gGameWindow);
 
     StretchDIBits
